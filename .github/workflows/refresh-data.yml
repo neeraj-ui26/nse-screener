@@ -1,0 +1,41 @@
+name: Refresh Nifty 500 Data
+ 
+# Runs automatically every weekday at 19:00 IST (13:30 UTC) - a few hours
+# after NSE market close (15:30 IST), giving data providers time to settle
+# end-of-day figures. Also runnable manually from the Actions tab anytime
+# via "workflow_dispatch" (a "Run workflow" button appears in GitHub's UI).
+on:
+  schedule:
+    - cron: '30 13 * * 1-5'   # Mon-Fri only (0=Sun ... 6=Sat in cron's day-of-week field)
+  workflow_dispatch:
+ 
+# Needed so this workflow can push the updated database back to the repo.
+permissions:
+  contents: write
+ 
+jobs:
+  refresh-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+ 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+ 
+      - name: Install dependencies
+        run: pip install yfinance pandas
+ 
+      - name: Run ingestion script
+        run: python ingest_nifty500.py
+ 
+      - name: Commit and push updated database (only if something changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add nifty500.db ingestion_log.txt
+          git diff --quiet --cached || git commit -m "Automated daily data refresh"
+          git push
+ 
